@@ -41,6 +41,14 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
+        """Extracts the response code of the HTTP response (e.g., 200, 404, etc)
+        
+        Args:
+            data: the HTTP response
+        
+        Returns: 
+            The HTTP response code
+        """
         return None
 
     def get_headers(self,data):
@@ -70,6 +78,20 @@ class HTTPClient(object):
     def GET(self, url, args=None):
         code = 500
         body = ""
+        
+        print("GET part")
+        url = urllib.parse.urlparse(url)
+        
+        port_number = 80 # Default prot for HTTP is 80 while HTTPs is 443
+        self.connect(url.hostname, 80)
+        print("Done connecting")
+        http_header = f"GET {url.path} HTTP/1.1\n"
+
+        self.sendall(http_header)
+        print("Done sending")
+        print(self.recvall(self.socket))
+        # self.get_code(self.recvall(self.socket))
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
