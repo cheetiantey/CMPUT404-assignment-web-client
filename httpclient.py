@@ -49,7 +49,9 @@ class HTTPClient(object):
         Returns: 
             The HTTP response code
         """
-        return None
+        data = data.split(" ")
+        http_response_code = int(data[1])
+        return http_response_code
 
     def get_headers(self,data):
         return None
@@ -76,22 +78,58 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
+        print(f"url is: {url}")
         code = 500
         body = ""
         
-        print("GET part")
+        # print("GET part")
         url = urllib.parse.urlparse(url)
         
-        port_number = 80 # Default prot for HTTP is 80 while HTTPs is 443
-        self.connect(url.hostname, 80)
-        print("Done connecting")
-        http_header = f"GET {url.path} HTTP/1.1\n"
+        port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
+        # print("Before connection***")
+        print("Hostname is: ", url.hostname)
+        print("Port is: ", port_number)
+        try:
+            # self.connect(url.hostname, 80)
+            print("Trying to connect...")
+            self.connect(url.hostname, port_number)
+            print("Connection established")
+        except:
+            code = 404
+            self.close()
+            print("404 Error***")
+            return HTTPResponse(code, body)
+        # print("After connection***")
+        # print("Done connecting")
+        # print(f"url.path is: {url.path}")
+        # print(f"url.hostname is: {url.hostname}")
+        
+        url_path = url.path if url.path else "/"
 
+        http_header = f"GET {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*\r\nConnection: close\r\n\r\n"
         self.sendall(http_header)
-        print("Done sending")
-        print(self.recvall(self.socket))
-        # self.get_code(self.recvall(self.socket))
+        # http_header = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n"
+        # http_header = "GET / HTTP/1.1\r\nHost:www.example.com\r\n\r\n"
+        
+        # self.socket.send(b"GET / HTTP/1.1\r\nHost:www.google.com\r\n\r\n")
+        # self.sendall(f"GET {url.path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*\r\nConnection: close\r\n\r\n")
+        # http_header.encode('utf_8')
+        # print("HTTP Header is: ", http_header)
 
+        # self.sendall(http_header)
+        # print("Done sending")
+        # print(self.recvall(self.socket))
+        body = self.recvall(self.socket)
+        print(body)
+        # print(self.socket.recv(4096))
+        self.close()
+
+        # data = self.recvall(self.socket)
+        # print(self.get_code(data))
+        # self.get_code(self.recvall(self.socket))
+        # print("Code is: ", self.get_code(body))
+        code = self.get_code(body)
+        print("Non-404 code***: ", type(code))
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
