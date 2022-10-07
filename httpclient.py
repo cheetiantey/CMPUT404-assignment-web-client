@@ -40,7 +40,7 @@ class HTTPClient(object):
         self.socket.connect((host, port))
         return None
 
-    def get_code(self, data):
+    def get_code(self, data): 
         """Extracts the response code of the HTTP response (e.g., 200, 404, etc)
         
         Args:
@@ -50,7 +50,8 @@ class HTTPClient(object):
             The HTTP response code
         """
         data = data.split(" ")
-        http_response_code = int(data[1])
+        # print(f"data is: {data}")
+        http_response_code = int(data[1]) if len(data) > 1 else 404
         return http_response_code
 
     def get_headers(self,data):
@@ -78,7 +79,7 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        print(f"url is: {url}")
+        # print(f"url is: {url}")
         code = 500
         body = ""
         
@@ -87,17 +88,17 @@ class HTTPClient(object):
         
         port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
         # print("Before connection***")
-        print("Hostname is: ", url.hostname)
-        print("Port is: ", port_number)
+        # print("Hostname is: ", url.hostname)
+        # print("Port is: ", port_number)
         try:
             # self.connect(url.hostname, 80)
-            print("Trying to connect...")
+            # print("Trying to connect...")
             self.connect(url.hostname, port_number)
-            print("Connection established")
+            # print("Connection established")
         except:
             code = 404
             self.close()
-            print("404 Error***")
+            # print("404 Error***")
             return HTTPResponse(code, body)
         # print("After connection***")
         # print("Done connecting")
@@ -120,7 +121,7 @@ class HTTPClient(object):
         # print("Done sending")
         # print(self.recvall(self.socket))
         body = self.recvall(self.socket)
-        print(body)
+        # print(body)
         # print(self.socket.recv(4096))
         self.close()
 
@@ -129,12 +130,40 @@ class HTTPClient(object):
         # self.get_code(self.recvall(self.socket))
         # print("Code is: ", self.get_code(body))
         code = self.get_code(body)
-        print("Non-404 code***: ", type(code))
+        # print("Non-404 code***: ", type(code))
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
         code = 500
         body = ""
+
+        url = urllib.parse.urlparse(url)
+        port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
+        try:
+            # self.connect(url.hostname, 80)
+            # print("Trying to connect...")
+            self.connect(url.hostname, port_number)
+            # print("Connection established")
+        except:
+            code = 404
+            self.close()
+            print("404 Error***")
+            return HTTPResponse(code, body)
+
+        url_path = url.path if url.path else "/"
+
+        http_header = f"POST {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*"
+        args_len = len(args) if args else 0
+        http_header += "\r\nContent-length: " + str(args_len)
+
+        http_header += "\r\nConnection: close\r\n\r\n"
+        # http_header += "\r\n\r\n"
+        self.sendall(http_header)
+        body = self.recvall(self.socket)
+        # print(body)
+        self.close()
+        code = self.get_code(body)
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
