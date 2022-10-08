@@ -53,11 +53,37 @@ class HTTPClient(object):
         http_response_code = int(data[1]) if len(data) > 1 else 404
         return http_response_code
 
-    def get_headers(self,data):
-        return None
+    def get_headers(self, http_method, url_path, url_hostname, args):
+        """
+        
+        """
+        http_header = f"{http_method} {url_path} HTTP/1.1\r\nHost:{url_hostname}\r\nAccept: */*"
+        args_len = len(self.encode_args(args)) if args else 0
+        http_header += "\r\nContent-length: " + str(args_len)
+        if args:
+            http_header += "\r\nContent-Type : application/x-www-form-urlencoded"
+            http_header += "\r\n\r\n" + self.encode_args(args)
+        
+        http_header += "\r\nConnection: close\r\n\r\n"
+
+        return http_header
 
     def get_body(self, data):
-        return None
+        """Extracts the body of the HTTP response
+        
+        Args: 
+            data: HTTP response 
+        
+        Returns:
+            The body of the HTTP response
+        """
+        data = data.split("\r\n\r\n")
+        if len(data) > 1:
+            data = data[1]
+        else:
+            data = ""
+
+        return data
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -111,23 +137,17 @@ class HTTPClient(object):
             self.connect(url.hostname, port_number)
             url_path = url.path if url.path else "/"
 
-            http_header = f"GET {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*"
-            args_len = len(self.encode_args(args)) if args else 0
-            http_header += "\r\nContent-length: " + str(args_len)
-            if args:
-                http_header += "\r\nContent-Type : application/x-www-form-urlencoded"
-                http_header += "\r\n\r\n" + self.encode_args(args)
-            
-            http_header += "\r\nConnection: close\r\n\r\n"
+            http_header = self.get_headers("GET", url_path, url.hostname, args)
             self.sendall(http_header)
 
             body = self.recvall(self.socket)
-
-            self.close()
+            # data = self.recvall(self.socket)
+            # body = self.get_body(data)
             code = self.get_code(body)
+            self.close()
 
-            bodytest = body.split("\r\n\r\n")
-            bodytest = bodytest[1] if len(bodytest) > 1 else None
+            body = body.split("\r\n\r\n")
+            body = body[1] if len(body) > 1 else None
             return HTTPResponse(code, body)
         except:
             code = 404
@@ -145,18 +165,12 @@ class HTTPClient(object):
             self.connect(url.hostname, port_number)
             url_path = url.path if url.path else "/"
 
-            http_header = f"POST {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*"
-            args_len = len(self.encode_args(args)) if args else 0
-            http_header += "\r\nContent-length: " + str(args_len)
-            if args:
-                http_header += "\r\nContent-Type : application/x-www-form-urlencoded"
-                http_header += "\r\n\r\n" + self.encode_args(args)
+            http_header = self.get_headers("POST", url_path, url.hostname, args)
 
-            http_header += "\r\nConnection: close\r\n\r\n"
             self.sendall(http_header)
             body = self.recvall(self.socket)
-            self.close()
             code = self.get_code(body)
+            self.close()
             
             bodytest = body.split("\r\n\r\n")
             bodytest = bodytest[1] if len(bodytest) > 1 else None
