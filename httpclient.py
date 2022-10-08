@@ -78,6 +78,30 @@ class HTTPClient(object):
                 done = not part
         return buffer.decode('utf-8')
 
+    def encode_args(self, args):
+        """Encode the GET/POST arguments into a properly formatted query parameter
+
+        Args:
+            args: POST argument
+        
+        Returns:
+            A query paramter to be used in the body of the GET/POST request
+        """
+        arr = []
+        for key, val in args.items():
+            _arr = ""
+            _arr += key + "="
+            for c in val:
+                if c == "\n":
+                    _arr += "%0A"
+                elif c == "\r":
+                    _arr += "%0D"
+                else:
+                    _arr += c
+            arr.append(_arr)
+        print("arr is: ", arr)
+        return "&".join(arr)
+
     def GET(self, url, args=None):
         # print(f"url is: {url}")
         code = 500
@@ -87,63 +111,33 @@ class HTTPClient(object):
         url = urllib.parse.urlparse(url)
         
         port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
-        # print("Before connection***")
-        # print("Hostname is: ", url.hostname)
-        # print("Port is: ", port_number)
         try:
-            # self.connect(url.hostname, 80)
-            # print("Trying to connect...")
             self.connect(url.hostname, port_number)
-            # print("Connection established")
         except:
             code = 404
             self.close()
-            # print("404 Error***")
             return HTTPResponse(code, body)
-        # print("After connection***")
-        # print("Done connecting")
-        # print(f"url.path is: {url.path}")
-        # print(f"url.hostname is: {url.hostname}")
         
         url_path = url.path if url.path else "/"
 
         http_header = f"GET {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*\r\nConnection: close\r\n\r\n"
         self.sendall(http_header)
-        # http_header = "GET / HTTP/1.1\r\nHost: localhost:8080\r\n\r\n"
-        # http_header = "GET / HTTP/1.1\r\nHost:www.example.com\r\n\r\n"
-        
-        # self.socket.send(b"GET / HTTP/1.1\r\nHost:www.google.com\r\n\r\n")
-        # self.sendall(f"GET {url.path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*\r\nConnection: close\r\n\r\n")
-        # http_header.encode('utf_8')
-        # print("HTTP Header is: ", http_header)
 
-        # self.sendall(http_header)
-        # print("Done sending")
-        # print(self.recvall(self.socket))
         body = self.recvall(self.socket)
-        # print(body)
-        # print(self.socket.recv(4096))
-        self.close()
 
-        # data = self.recvall(self.socket)
-        # print(self.get_code(data))
-        # self.get_code(self.recvall(self.socket))
-        # print("Code is: ", self.get_code(body))
+        self.close()
         code = self.get_code(body)
-        # print("Non-404 code***: ", type(code))
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
+        print(f"url is: {url}")
         code = 500
         body = ""
 
         url = urllib.parse.urlparse(url)
         port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
         try:
-            # self.connect(url.hostname, 80)
-            # print("Trying to connect...")
             self.connect(url.hostname, port_number)
-            # print("Connection established")
         except:
             code = 404
             self.close()
@@ -153,8 +147,14 @@ class HTTPClient(object):
         url_path = url.path if url.path else "/"
 
         http_header = f"POST {url_path} HTTP/1.1\r\nHost:{url.hostname}\r\nAccept: */*"
-        args_len = len(args) if args else 0
+        # args_len = len(args) if args else 0
+        print("original args is:     ", args)
+        print("args_to_str(args) is: ", self.encode_args(args)) if args else None
+        args_len = len(self.encode_args(args)) if args else 0
         http_header += "\r\nContent-length: " + str(args_len)
+        if args:
+            http_header += "\r\nContent-Type : application/x-www-form-urlencoded"
+            http_header += "\r\n\r\n" + self.encode_args(args)
 
         http_header += "\r\nConnection: close\r\n\r\n"
         # http_header += "\r\n\r\n"
@@ -163,8 +163,10 @@ class HTTPClient(object):
         # print(body)
         self.close()
         code = self.get_code(body)
-
-        return HTTPResponse(code, body)
+        
+        bodytest = body.split("\r\n\r\n")
+        bodytest = bodytest[1] if len(bodytest) > 1 else None
+        return HTTPResponse(code, bodytest)
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
