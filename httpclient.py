@@ -54,8 +54,16 @@ class HTTPClient(object):
         return http_response_code
 
     def get_headers(self, http_method, url_path, url_hostname, args):
-        """
+        """Prepares the HTTP headers needed for a HTTP request
+
+        Args:
+            http_method: GET/POST method
+            url_path: The URL path that we're trying to reach
+            url_hostname: The hostname of the URL
+            args: The query parameters to be passed in (could be optional)
         
+        Returns:
+            The HTTP header
         """
         http_header = f"{http_method} {url_path} HTTP/1.1\r\nHost:{url_hostname}\r\nAccept: */*"
         args_len = len(self.encode_args(args)) if args else 0
@@ -127,8 +135,16 @@ class HTTPClient(object):
         return "&".join(arr)
 
     def GET(self, url, args=None):
+        """Sends a GET request to url
+
+        Args:
+            url: The URL we're trying to reach
+            args: Query parameters (could be optional)
+        
+        Returns:
+            A HTTP response object containing the HTTP response code and body
+        """
         code = 500
-        body = ""
         
         url = urllib.parse.urlparse(url)
         
@@ -138,16 +154,15 @@ class HTTPClient(object):
             url_path = url.path if url.path else "/"
 
             http_header = self.get_headers("GET", url_path, url.hostname, args)
+            
             self.sendall(http_header)
 
-            body = self.recvall(self.socket)
-            # data = self.recvall(self.socket)
-            # body = self.get_body(data)
-            code = self.get_code(body)
+            data = self.recvall(self.socket)
+            body = self.get_body(data)
+            code = self.get_code(data)
+
             self.close()
 
-            body = body.split("\r\n\r\n")
-            body = body[1] if len(body) > 1 else None
             return HTTPResponse(code, body)
         except:
             code = 404
@@ -156,8 +171,16 @@ class HTTPClient(object):
         
 
     def POST(self, url, args=None):
+        """Sends a POST request to url
+
+        Args:
+            url: The URL we're trying to reach
+            args: Query parameters (could be optional)
+        
+        Returns:
+            A HTTP response object containing the HTTP response code and body
+        """
         code = 500
-        body = ""
 
         url = urllib.parse.urlparse(url)
         port_number = url.port if url.port else 80 # Default prot for HTTP is 80 while HTTPs is 443
@@ -168,13 +191,14 @@ class HTTPClient(object):
             http_header = self.get_headers("POST", url_path, url.hostname, args)
 
             self.sendall(http_header)
-            body = self.recvall(self.socket)
-            code = self.get_code(body)
+
+            data = self.recvall(self.socket)
+            body = self.get_body(data)
+            code = self.get_code(data)
+
             self.close()
             
-            bodytest = body.split("\r\n\r\n")
-            bodytest = bodytest[1] if len(bodytest) > 1 else None
-            return HTTPResponse(code, bodytest)
+            return HTTPResponse(code, body)
         except:
             code = 404
             self.close()
